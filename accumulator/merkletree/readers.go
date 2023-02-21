@@ -68,13 +68,13 @@ func (t *Tree) ReadAll(r1 io.Reader, r2 io.Reader, segmentSize int) error {
 // each leaf is 'segmentSize' long and 'h' is used as the hashing function. All
 // leaves will be 'segmentSize' bytes except the last leaf, which will not be
 // padded out if there are not enough bytes remaining in the reader.
-func ReaderRoot(r1 io.Reader, r2 io.Reader, h hash.Hash, segmentSize int) (rootHash []byte, rootSum uint64, err error) {
+func ReaderRoot(r1 io.Reader, r2 io.Reader, h hash.Hash, segmentSize int) (merkleRoot MerkleRoot, err error) {
 	tree := New(h)
 	err = tree.ReadAll(r1, r2, segmentSize)
 	if err != nil {
 		return
 	}
-	rootHash, rootSum = tree.Root()
+	merkleRoot = tree.Root()
 	return
 }
 
@@ -83,7 +83,7 @@ func ReaderRoot(r1 io.Reader, r2 io.Reader, h hash.Hash, segmentSize int) (rootH
 // number of leaves in the Merkle tree are all returned. All leaves will we
 // 'segmentSize' bytes except the last leaf, which will not be padded out if
 // there are not enough bytes remaining in the reader.
-func BuildReaderProof(r1 io.Reader, r2 io.Reader, h hash.Hash, segmentSize int, index uint64) (rootHash []byte, rootSum uint64, proofHashSet [][]byte, proofSumSet []uint64, numLeaves uint64, err error) {
+func BuildReaderProof(r1 io.Reader, r2 io.Reader, h hash.Hash, segmentSize int, index uint64) (merkleRoot MerkleRoot, proofSet ProofSet, numLeaves uint64, err error) {
 	tree := New(h)
 	err = tree.SetIndex(index)
 	if err != nil {
@@ -96,8 +96,8 @@ func BuildReaderProof(r1 io.Reader, r2 io.Reader, h hash.Hash, segmentSize int, 
 	if err != nil {
 		return
 	}
-	rootHash, rootSum, proofHashSet, proofSumSet, _, numLeaves = tree.Prove()
-	if len(proofHashSet) == 0 {
+	merkleRoot, proofSet, _, numLeaves = tree.Prove()
+	if len(proofSet.Hash) == 0 {
 		err = errors.New("index was not reached while creating proof")
 		return
 	}
