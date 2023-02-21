@@ -28,12 +28,12 @@ import (
 // true if the first element of the proof set is a leaf of data in the Merkle
 // root. False is returned if the proof set or Merkle root is nil, and if
 // 'numLeaves' equals 0.
-func VerifyProof(h hash.Hash, merkleRootHash []byte, MerkleRootSum uint64, proofHashSet [][]byte, proofSumSet []uint64, proofIndex uint64, numLeaves uint64) bool {
+func VerifyProof(h hash.Hash, merkleRoot MerkleRoot, proofSet ProofSet, proofIndex uint64, numLeaves uint64) bool {
 	// Return false for nonsense input. A switch statement is used so that the
 	// cover tool will reveal if a case is not covered by the test suite. This
 	// would not be possible using a single if statement due to the limitations
 	// of the cover tool.
-	if merkleRootHash ==nil || MerkleRootSum == 0 {
+	if merkleRoot.Hash ==nil || merkleRoot.Sum == 0 {
 		return false
 	}
 	if proofIndex >= numLeaves {
@@ -73,11 +73,11 @@ func VerifyProof(h hash.Hash, merkleRootHash []byte, MerkleRootSum uint64, proof
 	// The first element of the set is the original data. A sibling at height 1
 	// is created by getting the leafSum of the original data.
 	height := 0
-	if len(proofHashSet) <= height {
+	if len(proofSet.Hash) <= height {
 		return false
 	}
-	hash := leafHash(h, proofHashSet[height])
-	sum := proofSumSet[height]
+	hash := leafHash(h, proofSet.Hash[height])
+	sum := proofSet.Sum[height]
 
 	height++
 
@@ -105,15 +105,15 @@ func VerifyProof(h hash.Hash, merkleRootHash []byte, MerkleRootSum uint64, proof
 
 		// Determine if the proofIndex is in the first or the second half of
 		// the subtree.
-		if len(proofHashSet) <= height {
+		if len(proofSet.Hash) <= height {
 			return false
 		}
 		if proofIndex-subTreeStartIndex < 1<<uint(height-1) {
-			hash = nodeHash(h, hash, proofHashSet[height])
-			sum = nodeSum(sum, proofSumSet[height])
+			hash = nodeHash(h, hash, proofSet.Hash[height])
+			sum = nodeSum(sum, proofSet.Sum[height])
 		} else {
-			hash = nodeHash(h, proofHashSet[height], hash)
-			sum = nodeSum(proofSumSet[height], sum)
+			hash = nodeHash(h, proofSet.Hash[height], hash)
+			sum = nodeSum(proofSet.Sum[height], sum)
 		}
 		height++
 	}
@@ -122,21 +122,21 @@ func VerifyProof(h hash.Hash, merkleRootHash []byte, MerkleRootSum uint64, proof
 	// is the case IFF 'stableEnd' (the last index of the largest full subtree)
 	// is equal to the number of leaves in the Merkle tree.
 	if stableEnd != numLeaves-1 {
-		if len(proofHashSet) <= height {
+		if len(proofSet.Hash) <= height {
 			return false
 		}
-		hash = nodeHash(h, hash, proofHashSet[height])
-		sum = nodeSum(sum, proofSumSet[height])
+		hash = nodeHash(h, hash, proofSet.Hash[height])
+		sum = nodeSum(sum, proofSet.Sum[height])
 		height++
 	}
 
 	// All remaining elements in the proof set will belong to a left sibling.
-	for height < len(proofHashSet) {
-		hash = nodeHash(h, proofHashSet[height], hash)
-		sum = nodeSum(proofSumSet[height], sum)
+	for height < len(proofSet.Hash) {
+		hash = nodeHash(h, proofSet.Hash[height], hash)
+		sum = nodeSum(proofSet.Sum[height], sum)
 		height++
 	}
 
 	// Compare our calculated Merkle root to the desired Merkle root.
-	return bytes.Equal(hash, merkleRootHash) && sum == MerkleRootSum
+	return bytes.Equal(hash, merkleRoot.Hash) && sum == merkleRoot.Sum
 }
